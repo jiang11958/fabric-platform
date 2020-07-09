@@ -1,12 +1,13 @@
-﻿> Introduce
-. a tool to build a hyperledger fabric network in k8s.
-. support multi orderer type: solo,kafka,etcdRaft
-. support peer state database type: LevelDB and CouchDB
-. support fabric-ca server to manager the MSP identity
-. support blockchain-explorer in each org
-. support generate connection profile setting file conveniently
+﻿## Introduce
 
+* a tool to build a hyperledger fabric network in k8s.
+* support multi orderer type: solo,kafka,etcdRaft
+* support peer state database type: LevelDB and CouchDB
+* support fabric-ca server to manager the MSP identity
+* support blockchain-explorer in each org
+* support generate connection profile setting file conveniently
 
+## How To Use
 #### 1.we need a kubernetes network
 [how to bootup a k8s network](https://github.com/jiang11958/k8s-bootup)
 
@@ -82,9 +83,10 @@ cd ~/fabric-platform
 sh remove.sh "{'network':{'name':'fab'}}"
 ```
 
-> TODO LIST
-. add org dynamically 
-. remove org dynamically 
-. create channel dynamically 
-. join channel dynamically 
+## TODO LIST
+
+* add org dynamically 
+* remove org dynamically 
+* create channel dynamically 
+* join channel dynamically 
 . exit channel dynamically 
