@@ -1,0 +1,351 @@
+---
+- hosts: nfs
+  tasks:
+
+    - name: delete nfs share path
+      file:
+        path: '{{ nfs.path }}/resources'
+        state: absent
+        
+    - name: create nfs share path
+      file:
+        path: '{{ nfs.path }}/resources'
+        state: directory
+        mode: 0777
+        
+    - name: nfs config
+      lineinfile:
+        dest: /etc/exports
+        line: "{{ nfs.path }} {{ nfs.export }}(rw,no_root_squash,sync)"
+      run_once: True
+      
+    - name: restart nfs server          
+      command: '{{ item }}'
+      with_items:
+        - systemctl restart rpcbind
+        - systemctl enable rpcbind 
+        - systemctl restart nfs
+        - systemctl enable nfs
+      
+- hosts: localhost
+  environment:
+    PATH: "{{ ansible_env.PATH }}:{{ fabric_util_path }}/bin"
+  vars:       
+    local_nfs_path: /mnt/fabric  
+    fabric_util_path: /usr/local/bin
+    host_aliases_path: "{{ lookup('env', 'PWD') }}/helm/hostAliases.yaml"
+    
+  tasks:
+    - name: install jq       
+      yum:
+        name:
+         - jq
+        state: present
+    
+    # command module not support | < >  symbol  
+    - shell: "command -v helm | wc -l" 
+      register: result
+     
+    
+    - name: install helm and init helm
+      command: '{{item}}'
+      with_items:
+        - sh {{ lookup('env', 'PWD') }}/script/install_helm.sh
+        - kubectl create serviceaccount --namespace kube-system tiller
+        - kubectl create clusterrolebinding tiller-cluster-rule --clusterrole=cluster-admin --serviceaccount=kube-system:tiller
+        - helm init
+        - kubectl patch deploy --namespace kube-system tiller-deploy -p '{"spec":{"template":{"spec":{"serviceAccount":"tiller"}}}}'
+      when: result.stdout == "0"
+        
+    - name: wait for tiller pods to come up
+      shell: kubectl  get pods $( kubectl get pods -n kube-system | grep tiller | awk '{print $1 }' ) -n kube-system -o json
+      register: kubectl_get_ca_pods
+      until: kubectl_get_ca_pods.stdout|from_json|json_query('status.phase') == "Running"
+      #ignore_errors: yes
+      retries: 150
+      delay: 2
+      
+        
+    - name: timed wait
+      pause: seconds=10 
+      
+    - name: check nfs
+      command: "showmount -e {{ nfs.ip }}" 
+      register: command_result
+      failed_when: nfs.path  not in command_result.stdout
+      
+    - debug:
+        msg: "{{ nfs.ip }}:{{ nfs.path }}"
+      
+    #- stat:
+    #    path: "{{ local_nfs_path }}"
+    #  register: local_nfs  
+    #  
+    #- name: unmount nfs
+    #  mount:
+    #    src: "{{ nfs.ip }}:{{ nfs.path }}"
+    #    path: "{{ local_nfs_path }}"
+    #    fstype: nfs
+    #    opts: defaults
+    #    state: umounted  
+    #  when: local_nfs.stat.exists == true
+      
+      
+    #- name: delete nfs file
+    #  file:
+    #    path: "{{ local_nfs_path }}/resources"
+    #    state: absent
+        
+    - name: mount nfs
+      mount:
+        src: "{{ nfs.in_ip }}:{{ nfs.path }}"
+        path: "{{ local_nfs_path }}"
+        fstype: nfs
+        opts: defaults
+        state: mounted
+        
+
+        
+    - name: set values.yaml
+      template:
+        src: "{{ lookup('env', 'PWD') }}/ansible/values.yaml.j2"
+        dest: "{{ lookup('env', 'PWD') }}/helm/values.yaml"
+        
+    - name: set configtx.yaml
+      template:
+        src: "{{ lookup('env', 'PWD') }}/ansible/configtx.yaml.j2"
+        dest: "{{local_nfs_path}}/resources/configtx.yaml"
+       
+    - name: create channel-artifacts directory
+      file:
+        path: "{{ local_nfs_path }}/resources/channel-artifacts"
+        state: directory
+        
+    - name: create empty orderer genesis block file
+      file:
+        path: "{{ local_nfs_path }}/resources/channel-artifacts/genesis.block"
+        state: touch
+        
+########################################## for fabric-explorer #####################################################################     
+    - name: create explorer config directory
+      file:
+        state: "directory"    
+        path: "{{ local_nfs_path }}/resources/config/explorer"    
+        
+    - name: copy explorer script file
+      synchronize:
+        src:  "{{ lookup('env', 'PWD') }}/explorer"
+        dest: "{{ local_nfs_path }}/resources/config/"    
+
+    - name: set explorer script file mode
+      file:
+        path: "{{ local_nfs_path }}/resources/config/explorer"          
+        state: directory
+        recurse: yes
+        mode: 0777
+        
+    - name: start  fabric project
+      shell: helm install --name {{ cluster.name }} {{ lookup('env', 'PWD') }}/helm
+
+####################################################### for fabric-ca ###############################################################################      
+    - name: wait for ca pods to come up
+      shell: kubectl  get pods $( kubectl get pods -n {{ cluster.name }} | grep ca- | awk '{print $1 }' ) -n {{ cluster.name }} -o json
+      register: kubectl_get_ca_pods
+      until: kubectl_get_ca_pods.stdout|from_json|json_query('items[*].status.phase')|unique == ["Running"]
+      retries: 150
+      delay: 2
+    
+    - name: timed wait
+      pause: seconds=10    
+      
+    - stat:
+        path: "{{ fabric_util_path }}/bin/fabric-ca-client"
+      register: fabric_util  
+      
+    - debug:
+        msg: "{{ fabric_util.stat.exists == false }}"
+        
+    - name: down and unarchive fabric util binary
+      unarchive:
+        src: https://github.com/hyperledger/fabric/releases/download/v1.4.4/hyperledger-fabric-linux-amd64-1.4.4.tar.gz
+        dest: "{{ fabric_util_path }}"
+        remote_src: yes
+      when: fabric_util.stat.exists == false
+        
+        
+    - stat:
+        path: "{{ fabric_util_path }}/bin/fabric-ca-client"
+      register: fabric_ca_client    
+      
+    - name: down and unarchive fabric-ca-client binary
+      unarchive:
+        src: https://github.com/hyperledger/fabric-ca/releases/download/v1.4.7/hyperledger-fabric-ca-linux-amd64-1.4.7.tar.gz
+        dest: "{{ fabric_util_path }}"
+        remote_src: yes
+      when: fabric_ca_client.stat.exists == false
+      
+    - name: fabric tool environment /root/.bashrc
+      shell: echo -e '#fabric tool environment\nexport TOOL_HOME={{ fabric_util_path }}\nexport PATH=$PATH:$TOOL_HOME/bin'>> ~/.bash_profile; source ~/.bash_profile
+      run_once: True
+      
+    - name: set tlsca.orderers hosts
+      lineinfile:
+        dest: /etc/hosts
+        line: "127.0.0.1  tlsca.{{ orderer.domain }}"
+      run_once: True
+      
+    - name: set tlsca.orgs hosts
+      lineinfile:
+        dest: /etc/hosts
+        line: "127.0.0.1  tlsca.{{ item.domain }}"
+      run_once: True
+      with_items: '{{ orgs }}'
+    
+    - name: delete ./crypto-config ./fabric-ca-files
+      file:
+        path: "{{ item }}"
+        state: absent
+      with_items:
+        - "{{ lookup('env', 'PWD') }}/ansible/crypto-config"
+        - "{{ lookup('env', 'PWD') }}/ansible/fabric-ca-files"
+        
+    
+    - name: create orderer MSP files
+      command: sh {{ lookup('env', 'PWD') }}/ca/run.sh {{ cluster.name }}  "{{ lookup('env', 'PWD') }}/ca/getca-orderer.sh" {{ local_nfs_path }}  {{ orderer.domain }} {{ orderer.count }}  {{ orderer.password }} {{host_aliases_path}}
+      become: true
+      register: command_result
+        
+    - debug: msg="{{command_result}}"
+    
+    - name: create orgs MSP files
+      command: sh {{ lookup('env', 'PWD') }}/ca/run.sh {{ cluster.name }}  "{{ lookup('env', 'PWD') }}/ca/getca-org.sh" {{ local_nfs_path }}  {{ item.domain }} {{ item.count }}  {{ orderer.password }} {{host_aliases_path}}
+      register: command_result
+      loop: "{{ orgs }}"
+      loop_control:
+        index_var: my_idx
+        
+    - debug: msg="{{command_result}}"
+    
+    - name: create channel-artifacts directory
+      file:
+        path: "{{ lookup('env', 'PWD') }}/channel-artifacts"
+        state: directory
+        
+
+    - name: copy crypto-config directory
+      synchronize:
+        src:  "{{ lookup('env', 'PWD') }}/ansible/crypto-config"
+        dest: "{{ local_nfs_path }}/resources/" 
+        
+
+    # configtx.yaml and crypto-config must in configPath
+    - name: create orderer genesis block file  
+      command: "configtxgen -profile {{ orderer.type }}ModeGenesis -configPath {{local_nfs_path}}/resources -channelID byfn-sys-channel -outputBlock {{ lookup('env', 'PWD') }}/channel-artifacts/genesis.block"
+    
+    # configtx.yaml and crypto-config must in configPath
+    - name: create channel tx file
+      command: "configtxgen -profile {{ item.name }} -configPath {{local_nfs_path}}/resources -outputCreateChannelTx {{ lookup('env', 'PWD') }}/channel-artifacts/{{ item.name }}_channel.tx -channelID {{ item.name }}"
+      with_items: '{{ channels }}'
+      
+    # configtx.yaml and crypto-config must in configPath
+    - name: create channel org anchor config
+      command: "configtxgen -profile {{ item.0.name }} -configPath {{local_nfs_path}}/resources -outputAnchorPeersUpdate {{ lookup('env', 'PWD') }}/channel-artifacts/{{ item.0.name }}_{{item.1}}_MSPanchors.tx -channelID {{ item.0.name }}  -asOrg {{item.1}}MSP"
+      register: command_result
+      loop: "{{ channels|subelements('orgs') }}"
+      
+    - name: delete orderer genesis block file
+      file:
+        path: "{{ local_nfs_path }}/resources/channel-artifacts/genesis.block"
+        state: absent
+       
+    - name: copy orderer genesis block and channel tx file
+      synchronize:
+        src:  "{{ lookup('env', 'PWD') }}/channel-artifacts"
+        dest: "{{ local_nfs_path }}/resources/"                
+
+########################################## for fabric-explorer #####################################################################     
+
+    - name: create explorer config directory
+      file:
+        state: "directory"
+        path: "{{ local_nfs_path }}/resources/crypto-config/peerOrganizations/{{ item.domain }}/explorer/config"
+      loop: "{{ orgs }}"
+      loop_control:
+        index_var: my_idx
+        
+    - name: generate explorer config.json
+      template:
+        src: "{{ lookup('env', 'PWD') }}/ansible/config.json.j2"
+        dest: "{{ local_nfs_path }}/resources/crypto-config/peerOrganizations/{{ item.domain }}/explorer/config/config.json"
+      register: command_result
+      loop: "{{ orgs }}"
+      loop_control:
+        index_var: my_idx
+
+    - name: find msp keystore
+      find:
+        paths: "{{local_nfs_path}}/resources/crypto-config/peerOrganizations/{{item.domain}}/users/Admin@{{item.domain}}/msp/keystore/"
+        patterns: "*_sk"
+      register: files_matched
+      loop: "{{ orgs }}"      
+
+    - set_fact:
+        keystores: "{{ keystores|default({}) | combine( {item.item.name: item.files[0].path | basename} ) }}"
+      loop: "{{ files_matched.results }}"
+      
+    - name: generate explorer network.json
+      template:
+        src: "{{ lookup('env', 'PWD') }}/ansible/network.json.j2"
+        dest: "{{ local_nfs_path }}/resources/crypto-config/peerOrganizations/{{ item.domain }}/explorer/config/network.json"
+      register: command_result
+      loop: "{{ orgs }}"
+      loop_control:
+        index_var: my_idx
+        
+    - debug: msg="{{command_result}}"
+
+########################################## for fabric-explorer #####################################################################
+    
+    - name: update hostAliases
+      command: helm upgrade {{ cluster.name }} {{ lookup('env', 'PWD') }}/helm -f {{ lookup('env', 'PWD') }}/helm/hostAliases.yaml
+ 
+ 
+    - name: wait for all pods to come up 
+      shell: kubectl  get pods $( kubectl get pods -n {{ cluster.name }} | grep - | grep -v 'Terminating' |  awk '{print $1 }' ) -n {{ cluster.name }} -o json
+      register: kubectl_get_all_pods
+      until: kubectl_get_all_pods.stdout|from_json|json_query('items[*].status.phase')|unique == ["Running"]
+      retries: 60
+      delay: 5 
+      
+      
+    - name: get all service ip and port
+      command: sh  {{ lookup('env', 'PWD') }}/script/get_all_service.sh {{ lookup('env', 'PWD') }}/allService.txt
+      
+    - name: delete orderer pod
+      shell: kubectl  delete pod $( kubectl get pods -n {{ cluster.name }} | grep -v 'ca-' | grep orderer |  awk '{print $1 }' ) -n {{ cluster.name }}
+
+    - name: check all service avaiable
+      wait_for:
+        #host: "{{item.split(':')[0]}}"
+        host: "127.0.0.1"
+        port: "{{item.split(':')[1]}}"
+        timeout: 600
+        state: started
+      with_lines: cat {{ lookup('env', 'PWD') }}/allService.txt
+      
+    - name: delete orderer pod
+      shell: kubectl  delete pod $( kubectl get pods -n {{ cluster.name }} | grep orderer | grep 'CrashLoopBackOff ' |  awk '{print $1 }' ) -n {{ cluster.name }}
+      ignore_errors: yes
+      
+    - name: create channel and join
+      command: sh {{ lookup('env', 'PWD') }}/script/channel.sh {{ cluster.name }} {{orderer.domain}} {{ item.0.name }} {{ item.1}}
+      become: true
+      register: command_result
+      loop: "{{ channels|subelements('orgs') }}"
+
+        
+    - debug: msg="{{command_result}}"
+    
+    - name: delete explorer pod
+      shell: kubectl  delete pod $( kubectl get pods -n {{ cluster.name }} | grep explorer |  awk '{print $1 }' ) -n {{ cluster.name }}
+      ignore_errors: yes

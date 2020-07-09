@@ -1,0 +1,39 @@
+{{- /* set root with the value of "." as the "." is override inside the range loop */}}
+{{- $root := . }}
+
+{{- range $ordererOrg := $root.Values.ordererOrgs}}
+
+{{- /* shared variables */}}
+{{- $clusterName := $root.Values.clusterName }}
+{{- $orgName := $ordererOrg.name }}
+{{- $orgDomainName := $ordererOrg.domain }}
+{{- $namespace := printf $clusterName }}
+{{- $pvcName := printf "%s-shared" $ordererOrg.domain }}
+
+# namespace
+{{- $scope := dict "name" $namespace }}
+{{- template "namespace" $scope }}
+
+# persistent volume
+{{- $name := printf "%s-shared" $ordererOrg.domain }}
+{{- $nfsPath := printf "%s/resources" $root.Values.nfs.basePath   }}
+{{- $scope := dict "name" $name "nfsServer" $root.Values.nfs.ip "nfsPath" $nfsPath "pvcNamespace" $namespace "pvcName" $pvcName }}
+{{- template "persistentVolume" $scope }}
+
+# persistent volume claim
+{{- $scope := dict "name" $pvcName "namespace" $namespace }}
+{{- template "persistentVolumeClaim" $scope }}
+
+# the deployment of ca
+{{- $name := printf "ca-%s" $orgName }}
+{{- $scope := dict "name" $name "namespace" $namespace "pvc" $pvcName "orgDomainName" $orgDomainName }}
+{{- template "ca.deployment" $scope }}
+
+# the service of ca
+{{- $name := printf "ca-service-%s" $orgName }}
+{{- $domain := printf "tlsca.%s" $orgDomainName }}
+{{- $scope := dict "name" $name "namespace" $namespace "domain" $domain "orgDomainName" $orgDomainName }}
+{{- template "ca.service" $scope }}
+
+
+{{- end }}

@@ -1,0 +1,14 @@
+---
+  - hosts: localhost
+    connection: local 
+    tasks:
+
+
+    - name: "generate connection profile"
+      template:
+        src: "{{lookup('env', 'PWD')}}/connection-profile-standard.yaml.j2"
+        dest: "{{lookup('env', 'PWD')}}/connection-profile-standard-{{org.name}}.yaml"
+        trim_blocks: yes
+        
+
+        

@@ -1,0 +1,28 @@
+# Default values for fabric.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+clusterName: {{ cluster.name }}
+# consensus type: kafka, solo
+consensusType: {{ orderer.type }}
+hostAliases: []
+ordererOrgs:
+  - name: {{ orderer.name }}
+    domain: {{ orderer.domain }}
+    template:
+      #solo:1 kafka:3 etcdRaft:5
+      count: {{ orderer.count }}
+peerOrgs:
+{% for org in orgs %}
+  - name: {{ org.name }}
+    domain: {{ org.domain }}
+    stateDbType: {{ org.stateDbType }}
+    template:
+      count: {{ org.count }}
+    users:
+      count: 1	  
+{% endfor %}
+
+nfs:
+  ip: {{ nfs.ip }}
+  basePath: {{ nfs.path }}

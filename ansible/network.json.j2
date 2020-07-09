@@ -1,0 +1,85 @@
+{
+	"name": "first-network",
+	"version": "1.0.0",
+	"license": "Apache-2.0",
+	"client": {
+		"tlsEnable": true,
+		"adminUser": "Admin@{{ item.domain}}",
+		"adminPassword": "12345678",
+		"enableAuthentication": false,
+		"organization": "{{ item.mspName}}",
+		"connection": {
+			"timeout": {
+				"peer": {
+					"endorser": "300"
+				},
+				"orderer": "300"
+			}
+		}
+	},
+	"channels": {
+		{% set hasPre = { 'flag': False } %} 
+		{%- for channel in channels %}	
+		{%- if item.name in channel.orgs %}
+		{%- if  hasPre.flag %},{% endif %}
+		"{{channel.name}}": {
+			"peers": {
+				"peer0.{{ item.domain}}":{}
+			},
+			"connection": {
+				"timeout": {
+					"peer": {
+						"endorser": "6000",
+						"eventHub": "6000",
+						"eventReg": "6000"
+					}
+				}
+			}
+		}{%-   if hasPre.update({'flag':True}) %}{%- endif %} 
+		
+		{%-  endif %}
+		{%- endfor %}
+	},
+	"organizations": {
+		"{{ item.mspName}}": {
+			"mspid": "{{ item.mspName}}",
+			"peers": [
+				{% set hasPre = { 'flag': False } %} 
+				{%- for i in  range(0,item.count|int) %}	
+				{%- set peer = 'peer'+(i|string)+'.'+item.domain %}
+				{%- if  hasPre.flag %},{% endif %}
+				"{{ peer}}"{%-   if hasPre.update({'flag':True}) %}{%- endif %} 
+				{% endfor %}
+			],
+			"certificateAuthorities": ["tlsca.{{item.domain}}"],
+			"adminPrivateKey": {
+				"path": "/opt/explorer/crypto-config/peerOrganizations/{{ item.domain}}/users/Admin@{{ item.domain}}/msp/keystore/{{keystores[item.name]}}"
+			},
+			"signedCert": {
+				"path": "/opt/explorer/crypto-config/peerOrganizations/{{ item.domain}}/users/Admin@{{ item.domain}}/msp/signcerts/Admin@{{ item.domain}}-cert.pem"
+			}
+		}
+	},
+	"peers": {
+		{% set hasPre = { 'flag': False } %} 
+		{%- for i in  range(0,item.count|int) %}	
+		{%- set peer = 'peer'+(i|string)+'.'+item.domain %}
+		{%- if  hasPre.flag %},{% endif %}
+		"{{peer}}": {
+			"tlsCACerts": {
+				"path": "crypto-config/peerOrganizations/{{item.domain}}/peers/{{peer}}/tls/ca.crt"
+			},
+			"url": "grpcs://peer{{i|string}}-{{item.name}}:7051",
+			"grpcOptions": {
+				"ssl-target-name-override": "{{peer}}"
+			}
+		}{%-   if hasPre.update({'flag':True}) %}{%- endif %} 
+		{% endfor %}
+	},
+	"certificateAuthorities": {
+		"tlsca.{{item.domain}}": {
+			"url": "https://ca-service-{{item.name}}:7054",
+			"caName": "tlsca.{{item.domain}}"
+		}
+	}
+}

@@ -1,0 +1,7 @@
+# Ansible inventory file
+
+{% if nfs is defined %}
+[nfs]
+{{nfs.in_ip}} ansible_ssh_port={{nfs.port}} ansible_ssh_user={{nfs.user}} ansible_ssh_pass={{nfs.pass}}
+{% endif %}
+

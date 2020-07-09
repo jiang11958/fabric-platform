@@ -1,0 +1,12 @@
+- hosts: localhost
+    
+  tasks:
+    - name: helm remove project       
+      command: helm del {{ cluster.name }} --purge
+      
+    - name: wait for all pods remove
+      shell: kubectl  get pods -n {{ cluster.name }} 
+      register: result
+      until: '"No resources found" in result.stderr'
+      retries: 150
+      delay: 2
