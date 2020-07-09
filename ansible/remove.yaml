@@ -2,10 +2,10 @@
     
   tasks:
     - name: helm remove project       
-      command: helm del {{ cluster.name }} --purge
+      command: helm del {{ network.name }} --purge
       
     - name: wait for all pods remove
-      shell: kubectl  get pods -n {{ cluster.name }} 
+      shell: kubectl  get pods -n {{ network.name }} 
       register: result
       until: '"No resources found" in result.stderr'
       retries: 150

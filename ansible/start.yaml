@@ -145,11 +145,11 @@
         mode: 0777
         
     - name: start  fabric project
-      shell: helm install --name {{ cluster.name }} {{ lookup('env', 'PWD') }}/helm
+      shell: helm install --name {{ network.name }} {{ lookup('env', 'PWD') }}/helm
 
 ####################################################### for fabric-ca ###############################################################################      
     - name: wait for ca pods to come up
-      shell: kubectl  get pods $( kubectl get pods -n {{ cluster.name }} | grep ca- | awk '{print $1 }' ) -n {{ cluster.name }} -o json
+      shell: kubectl  get pods $( kubectl get pods -n {{ network.name }} | grep ca- | awk '{print $1 }' ) -n {{ network.name }} -o json
       register: kubectl_get_ca_pods
       until: kubectl_get_ca_pods.stdout|from_json|json_query('items[*].status.phase')|unique == ["Running"]
       retries: 150
@@ -211,14 +211,14 @@
         
     
     - name: create orderer MSP files
-      command: sh {{ lookup('env', 'PWD') }}/ca/run.sh {{ cluster.name }}  "{{ lookup('env', 'PWD') }}/ca/getca-orderer.sh" {{ local_nfs_path }}  {{ orderer.domain }} {{ orderer.count }}  {{ orderer.password }} {{host_aliases_path}}
+      command: sh {{ lookup('env', 'PWD') }}/ca/run.sh {{ network.name }}  "{{ lookup('env', 'PWD') }}/ca/getca-orderer.sh" {{ local_nfs_path }}  {{ orderer.domain }} {{ orderer.count }}  {{ orderer.password }} {{host_aliases_path}}
       become: true
       register: command_result
         
     - debug: msg="{{command_result}}"
     
     - name: create orgs MSP files
-      command: sh {{ lookup('env', 'PWD') }}/ca/run.sh {{ cluster.name }}  "{{ lookup('env', 'PWD') }}/ca/getca-org.sh" {{ local_nfs_path }}  {{ item.domain }} {{ item.count }}  {{ orderer.password }} {{host_aliases_path}}
+      command: sh {{ lookup('env', 'PWD') }}/ca/run.sh {{ network.name }}  "{{ lookup('env', 'PWD') }}/ca/getca-org.sh" {{ local_nfs_path }}  {{ item.domain }} {{ item.count }}  {{ orderer.password }} {{host_aliases_path}}
       register: command_result
       loop: "{{ orgs }}"
       loop_control:
@@ -307,11 +307,11 @@
 ########################################## for fabric-explorer #####################################################################
     
     - name: update hostAliases
-      command: helm upgrade {{ cluster.name }} {{ lookup('env', 'PWD') }}/helm -f {{ lookup('env', 'PWD') }}/helm/hostAliases.yaml
+      command: helm upgrade {{ network.name }} {{ lookup('env', 'PWD') }}/helm -f {{ lookup('env', 'PWD') }}/helm/hostAliases.yaml
  
  
     - name: wait for all pods to come up 
-      shell: kubectl  get pods $( kubectl get pods -n {{ cluster.name }} | grep - | grep -v 'Terminating' |  awk '{print $1 }' ) -n {{ cluster.name }} -o json
+      shell: kubectl  get pods $( kubectl get pods -n {{ network.name }} | grep - | grep -v 'Terminating' |  awk '{print $1 }' ) -n {{ network.name }} -o json
       register: kubectl_get_all_pods
       until: kubectl_get_all_pods.stdout|from_json|json_query('items[*].status.phase')|unique == ["Running"]
       retries: 60
@@ -322,7 +322,7 @@
       command: sh  {{ lookup('env', 'PWD') }}/script/get_all_service.sh {{ lookup('env', 'PWD') }}/allService.txt
       
     - name: delete orderer pod
-      shell: kubectl  delete pod $( kubectl get pods -n {{ cluster.name }} | grep -v 'ca-' | grep orderer |  awk '{print $1 }' ) -n {{ cluster.name }}
+      shell: kubectl  delete pod $( kubectl get pods -n {{ network.name }} | grep -v 'ca-' | grep orderer |  awk '{print $1 }' ) -n {{ network.name }}
 
     - name: check all service avaiable
       wait_for:
@@ -334,11 +334,11 @@
       with_lines: cat {{ lookup('env', 'PWD') }}/allService.txt
       
     - name: delete orderer pod
-      shell: kubectl  delete pod $( kubectl get pods -n {{ cluster.name }} | grep orderer | grep 'CrashLoopBackOff ' |  awk '{print $1 }' ) -n {{ cluster.name }}
+      shell: kubectl  delete pod $( kubectl get pods -n {{ network.name }} | grep orderer | grep 'CrashLoopBackOff ' |  awk '{print $1 }' ) -n {{ network.name }}
       ignore_errors: yes
       
     - name: create channel and join
-      command: sh {{ lookup('env', 'PWD') }}/script/channel.sh {{ cluster.name }} {{orderer.domain}} {{ item.0.name }} {{ item.1}}
+      command: sh {{ lookup('env', 'PWD') }}/script/channel.sh {{ network.name }} {{orderer.domain}} {{ item.0.name }} {{ item.1}}
       become: true
       register: command_result
       loop: "{{ channels|subelements('orgs') }}"
@@ -347,5 +347,5 @@
     - debug: msg="{{command_result}}"
     
     - name: delete explorer pod
-      shell: kubectl  delete pod $( kubectl get pods -n {{ cluster.name }} | grep explorer |  awk '{print $1 }' ) -n {{ cluster.name }}
+      shell: kubectl  delete pod $( kubectl get pods -n {{ network.name }} | grep explorer |  awk '{print $1 }' ) -n {{ network.name }}
       ignore_errors: yes

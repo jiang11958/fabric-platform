@@ -20,7 +20,7 @@ function removeNetWork(){
 #Print the usage message
 function printHelp () {
   echo "Usage: "
-  echo "   sh remove.sh \"{'cluster':{'name':'fab'}}\""
+  echo "   sh remove.sh \"{'network':{'name':'fab'}}\""
 }
 
 if [ $# -ne 1 ];
