@@ -2,13 +2,26 @@
   - hosts: localhost
     connection: local 
     tasks:
-
-
+    
+    - name: delete old connection-profile
+      file:
+        path: "{{lookup('env', 'PWD')}}/connection-profile-standard-{{org.name}}.yaml"
+        state: absent
+        
     - name: "generate connection profile"
       template:
         src: "{{lookup('env', 'PWD')}}/connection-profile-standard.yaml.j2"
         dest: "{{lookup('env', 'PWD')}}/connection-profile-standard-{{org.name}}.yaml"
         trim_blocks: yes
-        
 
-        
+    - stat:
+        path: "{{lookup('env', 'PWD')}}/connection-profile-standard-{{org.name}}.yaml"
+      register: connection_profile  
+    
+         
+    - debug: msg="your connection is generate failed"
+      when: connection_profile.stat.exists == false
+      
+    - debug: 
+        msg: "your connection is generate succ: {{ lookup('env', 'PWD') }}/connection-profile-standard-{{ org.name }}.yaml"
+      when: connection_profile.stat.exists == true

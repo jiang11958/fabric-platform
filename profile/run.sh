@@ -18,20 +18,15 @@ function getCaPems(){
 		pem=`cat /mnt/fabric/resources/fabric-ca-server/${domain}/ca-cert.pem`
 		caPems["${domain}"]="$pem"
 	done
-	
-	
-	
+
 	pemsJson='{"pems":[]}'
 	local i=0
 	for key in $(echo ${!caPems[*]})
 	do
 
 		p="${caPems[$key]}"
-
 		t=$(jq -Rrn --arg orgName "$key" 	--arg pem "$p"	'{"orgName":$orgName,"pem":$pem}')
-
 		pemsJson=$(echo $pemsJson| jq   -c --argjson m "$t" '.pems['$i']  |= . + $m' )
-
 		let i++ 
 	done
 	
@@ -64,8 +59,20 @@ function getServicePort(){
 	echo $serversJson
 	echo "getServicePort done"
 }
-clusterName=`echo $1|jq '.cluster.name' | sed 's/\"//g'`
-echo $clusterName
+
+# Print the usage message
+function printHelp () {
+  echo "Usage: "
+  echo "     sh run.sh \"{\\\"network\\\":{\\\"name\\\":\\\"fab\\\"},\\\"org\\\":{\\\"name\\\":\\\"org1\\\",\\\"mspName\\\":\\\"org1MSP\\\",\\\"domain\\\":\\\"org1.example.com\\\",\\\"port\\\":\\\"7051\\\"},\\\"orderer\\\":{\\\"name\\\":\\\"orderer\\\",\\\"count\\\":\\\"1\\\",\\\"domain\\\":\\\"orderer.example.com\\\"},\\\"orgs\\\":[{\\\"name\\\":\\\"org1\\\",\\\"mspName\\\":\\\"org1MSP\\\",\\\"domain\\\":\\\"org1.example.com\\\",\\\"port\\\":\\\"7051\\\",\\\"count\\\":\\\"1\\\"},{\\\"name\\\":\\\"org2\\\",\\\"mspName\\\":\\\"org2MSP\\\",\\\"domain\\\":\\\"org2.example.com\\\",\\\"port\\\":\\\"7051\\\",\\\"count\\\":\\\"1\\\"},{\\\"name\\\":\\\"org3\\\",\\\"mspName\\\":\\\"org3MSP\\\",\\\"domain\\\":\\\"org3.example.com\\\",\\\"port\\\":\\\"7051\\\",\\\"count\\\":\\\"1\\\"}],\\\"channels\\\":[{\\\"name\\\":\\\"mychannel2\\\",\\\"orgs\\\":[\\\"org1\\\",\\\"org3\\\"]},{\\\"name\\\":\\\"mychannel1\\\",\\\"orgs\\\":[\\\"org1\\\",\\\"org2\\\"]}]}\" "
+}
+
+if [ $# -ne 1 ];
+then
+	printHelp
+	exit 1
+fi
+
+clusterName=`echo $1|jq '.network.name' | sed 's/\"//g'`
 getCaPems $@
 getServicePort $@
 

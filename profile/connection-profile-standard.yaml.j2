@@ -7,7 +7,7 @@ peers:
 {%- for i in  range(0,org.count|int) %}	
 {%- set peer = 'peer'+(i|string)+'.'+org.domain %}
 {%- set peerDomain = peer+':'+(servers|selectattr('domain','equalto', peer) | map(attribute='port') | list | last) %}
-{%- do orgPeers.append(peerDomain) %}
+{%- if orgPeers.append(peerDomain) %}{% endif %}
   {{peerDomain}}:
     url: grpc://{{peerDomain}}
     tlsCACerts:
@@ -17,7 +17,7 @@ peers:
         {{ line }}
 {% 	endfor 		 %}
 {%- endfor %}
-{%- do allOrgPeersDict.__setitem__(org.name,orgPeers) %}
+{%- if allOrgPeersDict.__setitem__(org.name,orgPeers) %}{% endif %}
 {%- endfor %}
 
 {# **********************organizations setting********************************* #}
@@ -44,7 +44,7 @@ orderers:
 {%- for i in  range(0,orderer.count|int) %}
 {%- set ord = 'orderer'+(i|string)+'.'+orderer.domain %}
 {%- set ordererDomain = ord+':'+(servers|selectattr('domain','equalto', ord) | map(attribute='port') | list | last) %}
-{%- do ordererArr.append("orderer"+(i|string)) %}
+{%- if ordererArr.append("orderer"+(i|string)) %}{% endif %}
   orderer{{i}}:
     url: grpc://{{ordererDomain}}
     tlsCACerts:
