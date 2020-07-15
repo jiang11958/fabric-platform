@@ -9,16 +9,17 @@
 # Print the usage message
 function printHelp () {
   echo "Usage: "
-  echo "     sh get_all_service.sh allService.txt"
+  echo "     sh get_all_service.sh fab allService.txt"
 }
 
-if [ $# -ne 1 ];
+if [ $# -ne 2 ];
 then
 	printHelp
 	exit 1
 fi
 
-fileName=$1
+networkName=$1
+fileName=$2
 if [ -f $fileName ];then
 	rm -f $fileName
 fi
@@ -26,7 +27,7 @@ fi
 oldifs="$IFS"
 IFS=$'\n'
 
-result=`kubectl get svc -n fab --show-labels| grep -v CLUSTER| grep -v ca- | grep -v None | grep -v explorer- | awk '{print $3 " " $5}' `
+result=`kubectl get svc -n ${networkName} --show-labels| grep -v CLUSTER| grep -v ca- | grep -v None | grep -v explorer- | awk '{print $3 " " $5}' `
 
 arr=($result)
 

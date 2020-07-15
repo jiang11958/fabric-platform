@@ -319,7 +319,10 @@
       
       
     - name: get all service ip and port
-      command: sh  {{ lookup('env', 'PWD') }}/script/get_all_service.sh {{ lookup('env', 'PWD') }}/allService.txt
+      command: sh  {{ lookup('env', 'PWD') }}/script/get_all_service.sh {{ network.name }} {{ lookup('env', 'PWD') }}/allService.txt
+      register: command_result
+
+    - debug: msg="{{command_result}}"
       
     - name: delete orderer pod
       shell: kubectl  delete pod $( kubectl get pods -n {{ network.name }} | grep -v 'ca-' | grep orderer |  awk '{print $1 }' ) -n {{ network.name }}

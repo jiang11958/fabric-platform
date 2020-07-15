@@ -22,11 +22,11 @@ fi
 
 echo $@
 
-clusterName=$1
+networkName=$1
 org=$2
 
-container=` kubectl get pod -n fab|grep cli-${org}|awk '{print $1}' `
-result=`kubectl exec -i  $container -n fab -- bash -c 'peer channel list' ` 
+container=` kubectl get pod -n ${networkName} | grep cli-${org}|awk '{print $1}' `
+result=`kubectl exec -i  $container -n ${networkName} -- bash -c 'peer channel list' ` 
 echo "result: $result"
 
 
