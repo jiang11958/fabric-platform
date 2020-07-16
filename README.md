@@ -17,7 +17,7 @@
 cd ~
 git clone https://github.com/jiang11958/fabric-platform
 cd ~/fabric-platform
-sh run.sh "{'network':{'name':'fab'},'nfs':{'domain':'','in_ip':'172.21.28.224','ip':'172.21.28.224','port':22,'user':'root','pass':'password','path':'/nfs/fabric/fab','export':'172.21.28.0/24'},'orderer':{'name':'orderer','type':'etcdRaft','count':5,'port':'7050','domain':'orderer.example.com','password':'12345678','batchTimeout':'2','maxMessageCount':'10','absoluteMaxBytes':'99','preferredMaxBytes':'512'},'orgs':[{'name':'org1','mspName':'org1MSP','domain':'org1.example.com','stateDbType':'LevelDB','port':'7051','count':1},{'name':'org2','mspName':'org2MSP','domain':'org2.example.com','stateDbType':'LevelDB','port':'7051','count':1},{'name':'org3','mspName':'org3MSP','domain':'org3.example.com','stateDbType':'LevelDB','port':'7051','count':1}],'channels':[{'name':'mychannel2','orgs':['org1','org3']},{'name':'mychannel1','orgs':['org1','org2']}]}" 
+sh run.sh "{'network':{'name':'fab'},'nfs':{'domain':'','in_ip':'172.21.28.224','ip':'172.21.28.224','port':22,'user':'root','pass':'password','path':'/nfs/fabric/fab','export':'172.21.28.0/24'},'orderer':{'name':'orderer','type':'etcdRaft','count':5,'port':'7050','domain':'orderer.example.com','password':'12345678','batchTimeout':'2','maxMessageCount':'10','absoluteMaxBytes':'99','preferredMaxBytes':'512'},'orgs':[{'name':'org1','mspName':'org1MSP','domain':'org1.example.com','stateDbType':'LevelDB','port':'7051','count':1,'password':'12345678'},{'name':'org2','mspName':'org2MSP','domain':'org2.example.com','stateDbType':'LevelDB','port':'7051','count':1,'password':'12345678'},{'name':'org3','mspName':'org3MSP','domain':'org3.example.com','stateDbType':'LevelDB','port':'7051','count':1,'password':'12345678'}],'channels':[{'name':'mychannel2','orgs':['org1','org3']},{'name':'mychannel1','orgs':['org1','org2']}]}" 
 ```
 
 ```
@@ -53,21 +53,24 @@ sh run.sh "{'network':{'name':'fab'},'nfs':{'domain':'','in_ip':'172.21.28.224',
 		"domain": "org1.example.com",      #org domain
 		"stateDbType": "LevelDB",          #LevelDB or CouchDB
 		"port": "7051",                    #peer port
-		"count": 1                         #peer count
+		"count": 1,                        #peer count
+		"password": "12345678"             #MSP cert password
 	}, {
 		"name": "org2",
 		"mspName": "org2MSP",
 		"domain": "org2.example.com",
 		"stateDbType": "LevelDB",          
 		"port": "7051",
-		"count": 1
+		"count": 1,
+		"password": "12345678"
 	}, {
 		"name": "org3",
 		"mspName": "org3MSP",
 		"domain": "org3.example.com",
 		"stateDbType": "LevelDB",
 		"port": "7051",
-		"count": 1
+		"count": 1,
+		"password": "12345678"
 	}],
 	"channels": [{                         #channel setting
 		"name": "mychannel2",                #channel name

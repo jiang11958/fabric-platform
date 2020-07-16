@@ -218,7 +218,7 @@
     - debug: msg="{{command_result}}"
     
     - name: create orgs MSP files
-      command: sh {{ lookup('env', 'PWD') }}/ca/run.sh {{ network.name }}  "{{ lookup('env', 'PWD') }}/ca/getca-org.sh" {{ local_nfs_path }}  {{ item.domain }} {{ item.count }}  {{ orderer.password }} {{host_aliases_path}}
+      command: sh {{ lookup('env', 'PWD') }}/ca/run.sh {{ network.name }}  "{{ lookup('env', 'PWD') }}/ca/getca-org.sh" {{ local_nfs_path }}  {{ item.domain }} {{ item.count }}  {{ item.password }} {{host_aliases_path}}
       register: command_result
       loop: "{{ orgs }}"
       loop_control:
