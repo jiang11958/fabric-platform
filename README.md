@@ -78,14 +78,21 @@ sh run.sh "{'network':{'name':'fab'},'nfs':{'domain':'','in_ip':'172.21.28.224',
 	}]
 }
 ```
-#### 3.generate connection profile
+#### 3.install and invoke the test chaincode
+```
+cd ~/fabric-platform/chaincode
+#you should modify test.sh to you own config. ~/fabric-platform/chaincode/run.sh show all the chaincode functions like install、instantiated、invoke、query and upgrade
+sh test.sh
+```
+
+#### 4.generate connection profile
 [JUMP TO THE README](https://github.com/jiang11958/fabric-platform/tree/master/profile)
 ```
 cd ~/fabric-platform/profile
 sh run.sh "{\"network\":{\"name\":\"fab\"},\"org\":{\"name\":\"org1\",\"mspName\":\"org1MSP\",\"domain\":\"org1.example.com\",\"port\":\"7051\"},\"orderer\":{\"name\":\"orderer\",\"count\":\"1\",\"domain\":\"orderer.example.com\"},\"orgs\":[{\"name\":\"org1\",\"mspName\":\"org1MSP\",\"domain\":\"org1.example.com\",\"port\":\"7051\",\"count\":\"1\"},{\"name\":\"org2\",\"mspName\":\"org2MSP\",\"domain\":\"org2.example.com\",\"port\":\"7051\",\"count\":\"1\"},{\"name\":\"org3\",\"mspName\":\"org3MSP\",\"domain\":\"org3.example.com\",\"port\":\"7051\",\"count\":\"1\"}],\"channels\":[{\"name\":\"mychannel2\",\"orgs\":[\"org1\",\"org3\"]},{\"name\":\"mychannel1\",\"orgs\":[\"org1\",\"org2\"]}]}" 
 ```
 
-#### 4.show blockchain-explorer
+#### 5.show blockchain-explorer
 ```
 [root@test ~]cd ~
 [root@test ~]kubectl get svc -n fab | grep explorer | awk '{split($5,port,/[:/]/); print $1 " " port[2]}'
@@ -95,7 +102,7 @@ sh run.sh "{\"network\":{\"name\":\"fab\"},\"org\":{\"name\":\"org1\",\"mspName\
 #  explorer-org3 32101        ,so your org3 explorer url: http://your_master_ip:32101
 ```
 
-#### 5.remove the fabric network 
+#### 6.remove the fabric network 
 ```
 cd ~/fabric-platform
 sh remove.sh "{'network':{'name':'fab'}}"
