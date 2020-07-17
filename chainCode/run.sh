@@ -68,8 +68,9 @@ function instantiateChainCode(){
 	kubectl exec -i  $container -n ${networkName} -- peer chaincode instantiate -o "orderer0.${orderer}:7050" --tls --cafile "$pem" -n "$chainCodeName" -v "$version" -c "$initContent" -C "$channelName"  -P "$policy"
 }
 
-function upgradeChainCode(){	
-	kubectl exec -i  $container -n ${networkName} -- peer chaincode upgrade -n "$chainCodeName" -v "$version" -c "$initContent" -C "$channelName"  -P "$policy"
+function upgradeChainCode(){
+	pem="/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/${orderer}/orderers/orderer0.${orderer}/msp/tlscacerts/tlsca.${orderer}-cert.pem"
+	kubectl exec -i  $container -n ${networkName} -- peer chaincode upgrade -o "orderer0.${orderer}:7050" --tls --cafile "$pem" -n "$chainCodeName" -v "$version" -c "$initContent" -C "$channelName"  -P "$policy"
 }
 
 function invokeChainCode(){
@@ -88,8 +89,9 @@ function queryChainCode(){
 usage() { echo "Usage: $0 [-s fab] [-o org1] [-m 1] [-c cchhlx01] [-f /mnt/fabric/resources/chaincodes/zxst01bills.1.0.out]" 1>&2; exit 1; }
 usageForInstall() { echo "Usage: $0 [-s fab] [-o org1] [-m 3] [-f /mnt/fabric/resources/chaincodes/zxst01bills.1.0.out]" 1>&2; exit 1; }
 usageForInstantiate() { echo "Usage: $0 [-s fab] [-r orderer0.orderer.example.com:7050] [-o org1] [-m 4] [-c cchhlx01] [-n hhlx01bills] [-v 1.0] [-i {\"Args\":[\"a\",\"10\"]} ] [-p OR ('org1MSP.member','org3MSP.member') ] " 1>&2; exit 1; }
-usageForInvoke() { echo "Usage: $0 [-s fab] [-r orderer0.orderer.example.com:7050] [-o org1] [-m 5] [-c cchhlx01] [-n hhlx01bills]  [-e {\"Args\":[\"set\",\"c\",\"10\"]} ] " 1>&2; exit 1; }
-usageForQuery() { echo "Usage: $0 [-s fab]  [-o org1] [-m 6] [-c cchhlx01] [-n hhlx01bills]  [-q {\"Args\":[\"query\",\"c\"]} ]  " 1>&2; exit 1; }
+usageForUpgrade() { echo "Usage: $0 [-s fab] [-r orderer0.orderer.example.com:7050] [-o org1] [-m 5] [-c cchhlx01] [-n hhlx01bills] [-v 1.0] [-i {\"Args\":[\"a\",\"10\"]} ] [-p OR ('org1MSP.member','org3MSP.member') ] " 1>&2; exit 1; }
+usageForInvoke() { echo "Usage: $0 [-s fab] [-r orderer0.orderer.example.com:7050] [-o org1] [-m 6] [-c cchhlx01] [-n hhlx01bills]  [-e {\"Args\":[\"set\",\"c\",\"10\"]} ] " 1>&2; exit 1; }
+usageForQuery() { echo "Usage: $0 [-s fab]  [-o org1] [-m 7] [-c cchhlx01] [-n hhlx01bills]  [-q {\"Args\":[\"query\",\"c\"]} ]  " 1>&2; exit 1; }
 
 while getopts ":s:o:m:c:f:i:p:n:v:e:q:r:" W; do
     case "${W}" in
@@ -184,8 +186,8 @@ elif [ "4" = "$command" ];then
 	echo "policy = ${policy}"
 	instantiateChainCode
 elif [ "5" = "$command" ];then
-	if [ -z "${c}" ] || [ -z "${n}" ] || [ -z "${v}" ] || [ -z "${p}" ]; then
-      usageForInstantiate
+	if [ -z "${r}" ] || [ -z "${c}" ] || [ -z "${n}" ] || [ -z "${v}" ] || [ -z "${p}" ]; then
+      usageForUpgrade
 	fi
 	echo "channelName = ${channelName}"
 	echo "version = ${version}"
