@@ -339,6 +339,9 @@
     - name: delete orderer pod
       shell: kubectl  delete pod $( kubectl get pods -n {{ network.name }} | grep orderer | grep 'CrashLoopBackOff ' |  awk '{print $1 }' ) -n {{ network.name }}
       ignore_errors: yes
+
+    - name: wait a moment cause orderer cluster may be not ready
+      pause: seconds=20   
       
     - name: create channel and join
       command: sh {{ lookup('env', 'PWD') }}/script/channel.sh {{ network.name }} {{orderer.domain}} {{ item.0.name }} {{ item.1}}

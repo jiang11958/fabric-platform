@@ -34,7 +34,7 @@ spec:
 
       containers:
       - name: explorer
-        image: hyperledger/explorer:latest
+        image: hyperledger/explorer:1.0.0
         command: ["sh" , "-c" , "/fabric/config/explorer/app/run.sh"]
         env:
         - name: TZ
